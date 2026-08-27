@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - development
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@v4
+
+      - name: Verificar estructura del proyecto
+        run: |
+          test -f ./Dockerfile || (echo "Falta el archivo Dockerfile" && exit 1)
+          test -f ./index.html || (echo "Falta el archivo index.html" && exit 1)
+
+      - name: Verificar html
+        run: |
+          if ! grep -q "Hola, DevOps" index.html; then
+            echo "El archivo index.html no contiene el texto esperado 'Hola, DevOps'"
+            exit 1
+          fi
+          echo "HTML VALIDADOD"
+
+      - name: Construir la imagen de Docker
+        run: |
+          docker build -t practica:ci .
+
+      - name: Probar que el contenedor responda
+        run: |
+          docker run -d -p 8080:80 --name prueba practica:ci
+          sleep 5
+          if ! curl -s http://localhost:8080 | grep -q "Hola, DevOps"; then
+            echo "El contenedor no responde correctamente"
+            docker logs prueba
+            exit 1
+          fi
+          echo "Contenedor funcionando correctamente"
